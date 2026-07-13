@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>정규분포와 대수의 법칙 시뮬레이터</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; padding: 20px;
+            font-family: 'Malgun Gothic', sans-serif;
+            background-color: #0f111a; color: #ffffff;
+            display: flex; flex-direction: column; align-items: center;
+            min-height: 100vh;
+        }
+        header { text-align: center; margin-bottom: 20px; }
+        header h1 { margin: 0; color: #00fff0; text-shadow: 0 0 10px rgba(0,255,240,0.3); }
+        header p { margin: 5px 0 0 0; color: #8a99ad; }
+
+        .main-container {
+            display: flex; gap: 25px; width: 100%; max-width: 1200px;
+            flex-wrap: wrap; justify-content: center;
+        }
+
+        /* 왼쪽 시뮬레이션 및 컨트롤 패널 */
+        .left-panel {
+            flex: 1.2; min-width: 600px; display: flex; flex-direction: column; gap: 20px;
+        }
+        
+        /* 메인 시뮬레이션 화면 (하늘) */
+        .sky-container {
+            position: relative; width: 100%; height: 400px;
+            background: linear-gradient(to bottom, #070913, #14192d);
+            border: 2px solid #2c3554; border-radius: 12px; overflow: hidden;
+            cursor: crosshair;
+        }
+        .sky-canvas, .lightning-svg {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        }
+
+        /* 컨트롤 영역 */
+        .control-box {
+            background-color: #1a1f35; border: 1px solid #2c3554;
+            border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 15px;
+        }
+        .slider-group {
+            display: flex; align-items: center; gap: 15px;
+        }
+        .slider-group label { width: 140px; font-weight: bold; color: #cbd5e1; }
+        .slider-group input[type="range"] { flex: 1; accent-color: #00fff0; }
+        .slider-group .val-display { width: 60px; text-align: right; color: #00fff0; font-weight: bold; }
+
+        .btn-group { display: flex; gap: 10px; align-items: center; margin-top: 5px; }
+        .action-btn {
+            flex: 1; padding: 12px; font-size: 1rem; font-weight: bold;
+            border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s;
+        }
+        .btn-run { background: #00fff0; color: #0f111a; box-shadow: 0 0 15px rgba(0,255,240,0.3); }
+        .btn-run:hover { background: #00d8cc; transform: scale(1.02); }
+        .btn-reset { background: #334155; color: #f8fafc; }
+        .btn-reset:hover { background: #475569; }
+
+        .input-number-box {
+            background: #0f111a; border: 1px solid #475569; color: #fff;
+            padding: 8px; border-radius: 6px; width: 100px; text-align: center; font-size: 1rem;
+        }
+
+        /* 오른쪽 결과 데이터 패널 */
+        .right-panel {
+            flex: 0.8; min-width: 400px; background-color: #161a2b;
+            border: 1px solid #2c3554; border-radius: 12px; padding: 20px;
+            display: flex; flex-direction: column; gap: 20px;
+        }
+        .panel-title { margin: 0; font-size: 1.2rem; color: #ff3366; border-bottom: 1px solid #2c3554; padding-bottom: 10px; }
+
+        .data-row {
+            display: flex; justify-content: space-between; padding: 12px 0;
+            border-bottom: 1px solid #232a45; font-size: 1rem;
+        }
+        .data-label { color: #94a3b8; }
+        .data-value { font-weight: bold; color: #fff; }
+        .highlight-value { color: #ffff00; font-size: 1.2rem; }
+
+        /* 실시간 빈도 분석 차트 그래프 */
+        .chart-box {
+            background-color: #0b0d16; border: 1px solid #232a45;
+            border-radius: 8px; width: 100%; height: 200px; position: relative;
+        }
+        .chart-svg { width: 100%; height: 100%; }
+        
+        .edu-tip {
+            background: rgba(0, 255, 240, 0.05); border: 1px dashed #00fff0;
+            border-radius: 8px; padding: 12px; font-size: 0.9rem; line-height: 1.5; color: #cbd5e1;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>정규분포와 대수의 법칙 시뮬레이터</h1>
+        <p>연속확률변수의 확률밀도함수 밑넓이(적분)와 실제 무작위 사건의 적중률 관계를 탐구합니다.</p>
+    </header>
+
+    <div class="main-container">
+        
+        <div class="left-panel">
+            <div class="sky-container" id="sky-zone" onmousedown="onSkyMouseDown(event)" onmousemove="onSkyMouseMove(event)" onmouseup="onSkyMouseUp()">
+                <svg class="sky-canvas" id="distribution-canvas">
+                    <path id="integral-area-path" fill="rgba(0, 255, 240, 0.25)" stroke="none" />
+                    <path id="normal-curve-path" fill="none" stroke="#00fff0" stroke-width="3" />
+                </svg>
+                <svg class="lightning-svg" id="lightning-canvas"></svg>
+            </div>
+            
+            <div class="control-box">
+                <div class="slider-group">
+                    <label for="slider-mu">평균 (μ):</label>
+                    <input type="range" id="slider-mu" min="10" max="90" value="50" step="1" oninput="updateEnvironment()">
+                    <span class="val-display" id="display-mu">50</span>
+                </div>
+                <div class="slider-group">
+                    <label for="slider-sigma">표준편차 (σ):</label>
+                    <input type="range" id="slider-sigma" min="3" max="25" value="10" step="0.5" oninput="updateEnvironment()">
+                    <span class="val-display" id="display-sigma">10</span>
+                </div>
+                
+                <div style="border-top: 1px solid #2c3554; margin: 5px 0;"></div>
+                
+                <div class="slider-group" style="justify-content: space-between;">
+                    <div>
+                        <label for="input-count" style="width: auto; margin-right: 10px;">시행 횟수 (번개 수):</label>
+                        <input type="number" id="input-count" class="input-number-box" value="500" min="1" max="10000">
+                    </div>
+                    <div class="btn-group" style="flex: 1; justify-content: flex-end; max-width: 350px;">
+                        <button class="action-btn btn-reset" onclick="resetSimulation()">초기화</button>
+                        <button class="action-btn btn-run" onclick="runSimulation()">시뮬레이션 시작</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="edu-tip">
+                💡 <strong>실습 가이드:</strong><br>
+                1. 하늘 화면을 <strong>마우스로 좌우 드래그</strong>하여 측정할 확률 구간(장막)을 설정하세요.<br>
+                2. <strong>표준편차(σ) 슬라이더</strong>를 조절하며 곡선의 모양과 그에 맞춰 변하는 장막 내부의 <strong>적분값(밑넓이)</strong>을 확인하세요.<br>
+                3. 시행 횟수를 크게 설정하고 시뮬레이션을 가동하여 <strong>실제 적중률이 밑넓이로 수렴</strong>하는 대수의 법칙을 관찰하세요.
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <h3 class="panel-title">📈 실시간 통계 분석</h3>
+            
+            <div class="data-row">
+                <span class="data-label">설정된 방어 구간</span>
+                <span class="data-value" id="lbl-range">드래그하여 지정하세요</span>
+            </div>
+            
+            <div class="data-row" style="background-color: rgba(0, 255, 240, 0.05); padding: 10px; border-radius: 6px;">
+                <span class="data-label" style="color: #00fff0; font-weight: bold;">곡선 아래 밑넓이 (이론적 확률)</span>
+                <span class="data-value" id="lbl-theoretical-prob" style="color: #00fff0; font-size: 1.1rem;">0.00 %</span>
+            </div>
+
+            <div class="data-row">
+                <span class="data-label">현재 총 시행 횟수</span>
+                <span class="data-value" id="lbl-total-count">0 회</span>
+            </div>
+
+            <div class="data-row">
+                <span class="data-label">구간 내부 적중 횟수</span>
+                <span class="data-value" id="lbl-hit-count">0 회</span>
+            </div>
+
+            <div class="data-row" style="background-color: rgba(255, 255, 0, 0.05); padding: 10px; border-radius: 6px;">
+                <span class="data-label" style="color: #ffff00; font-weight: bold;">실제 방어 적중률 (경험적 확률)</span>
+                <span class="data-value highlight-value" id="lbl-empirical-ratio">0.00 %</span>
+            </div>
+
+            <h4 style="margin: 10px 0 0 0; color: #94a3b8; font-size: 0.95rem;">실제 낙하 빈도 분포 (히스토그램)</h4>
+            <div class="chart-box">
+                <svg class="chart-svg" id="histogram-svg">
+                    <line x1="0" y1="180" x2="100%" y2="180" stroke="#475569" stroke-width="1"/>
+                    <g id="histogram-bars"></g>
+                </svg>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 시뮬레이터 전역 상태 변수
+        let mu = 50;
+        let sigma = 10;
+        let dragStartX = null;
+        let selectionStartPct = null;
+        let selectionEndPct = null;
+        
+        // 데이터 수집용 변수
+        const totalIntervals = 60; // 히스토그램 조각 수
+        let histogramBuckets = new Array(totalIntervals).fill(0);
+        let totalCount = 0;
+        let hitCount = 0;
+        let animationFrameId = null;
+
+        window.onload = function() {
+            updateEnvironment();
+        };
+
+        // 슬라이더 및 환경 조작 시 동적 업데이트
+        function updateEnvironment() {
+            mu = parseFloat(document.getElementById('slider-mu').value);
+            sigma = parseFloat(document.getElementById('slider-sigma').value);
+            
+            document.getElementById('display-mu').innerText = mu;
+            document.getElementById('display-sigma').innerText = sigma;
+            
+            drawNormalDistribution();
+            calculateTheoreticalProbability();
+        }
+
+        // 정규분포 곡선 그리기
+        function drawNormalDistribution() {
+            const curvePath = document.getElementById('normal-curve-path');
+            const skyZone = document.getElementById('sky-zone');
+            const width = skyZone.clientWidth;
+            const height = skyZone.clientHeight;
+            
+            let points = [];
+            
+            for (let x = 0; x <= width; x++) {
+                let pctX = (x / width) * 100;
+                // 정규분포 확률밀도함수(PDF) 공식 적용
+                let exponent = -Math.pow(pctX - mu, 2) / (2 * Math.pow(sigma, 2));
+                let pdfValue = (1 / (sigma * Math.sqrt(2 * Math.PI))) * Math.exp(exponent);
+                
+                // 시각적으로 잘 보이도록 스케일 팩터(예: 3200) 곱해 Y축 반전 매핑
+                let y = height - 30 - (pdfValue * 3200);
+                points.push(`${x},${y}`);
+            }
+            
+            curvePath.setAttribute('d', 'M ' + points.join(' L '));
+            
+            // 장막(정적분 영역) 다시 그리기
+            drawIntegralArea(width, height);
+        }
+
+        // 사용자가 지정한 구간만큼 곡선 아래 정적분 면적 색칠하기
+        function drawIntegralArea(width, height) {
+            const areaPath = document.getElementById('integral-area-path');
+            if (selectionStartPct === null || selectionEndPct === null || selectionStartPct === selectionEndPct) {
+                areaPath.setAttribute('d', '');
+                return;
+            }
+            
+            const startX = Math.round((selectionStartPct / 100) * width);
+            const endX = Math.round((selectionEndPct / 100) * width);
+            
+            let points = [];
+            // 시작점 바닥 좌표 추가
+            points.push(`${startX},${height - 30}`);
+            
+            for (let x = startX; x <= endX; x++) {
+                let pctX = (x / width) * 100;
+                let exponent = -Math.pow(pctX - mu, 2) / (2 * Math.pow(sigma, 2));
+                let pdfValue = (1 / (sigma * Math.sqrt(2 * Math.PI))) * Math.exp(exponent);
+                let y = height - 30 - (pdfValue * 3200);
+                points.push(`${x},${y}`);
+            }
+            
+            // 끝점 바닥 좌표 추가 후 닫기
+            points.push(`${endX},${height - 30}`);
+            areaPath.setAttribute('d', 'M ' + points.join(' L ') + ' Z');
+        }
+
+        // 마우스 드래그 이벤트 핸들러들
+        function onSkyMouseDown(e) {
+            if (animationFrameId) return; // 시뮬레이션 중에는 구간 변경 금지
+            const rect = document.getElementById('sky-zone').getBoundingClientRect();
+            dragStartX = e.clientX - rect.left;
+            
+            selectionStartPct = (dragStartX / rect.width) * 100;
+            selectionEndPct = selectionStartPct;
+            updateEnvironment();
+        }
+
+        function onSkyMouseMove(e) {
+            if (dragStartX === null) return;
+            const rect = document.getElementById('sky-zone').getBoundingClientRect();
+            const currentX = e.clientX - rect.left;
+            
+            let currentPct = (currentX / rect.width) * 100;
+            let startPct = (dragStartX / rect.width) * 100;
+            
+            selectionStartPct = Math.max(0, Math.min(startPct, currentPct));
+            selectionEndPct = Math.min(100, Math.max(startPct, currentPct));
+            
+            updateEnvironment();
+        }
+
+        function onSkyMouseUp() {
+            dragStartX = null;
+        }
+
+        // 수학적 누적분포함수(CDF) 수치해석 함수
+        function getNormalCDF(x, mean, stdDev) {
+            const z = (x - mean) / stdDev;
+            return 0.5 * (1.0 + erf(z / Math.sqrt(2.0)));
+        }
+
+        // 오차함수(Error Function) 테일러 근사 공식
+        function erf(x) {
+            const sign = (x < 0) ? -1 : 1;
+            const absX = Math.abs(x);
+            const a1 =  0.254829592; const a2 = -0.284496736; const a3 =  1.421413741;
+            const a4 = -1.453152027; const a5 =  1.061405429; const p  =  0.3275911;
+            const t = 1.0 / (1.0 + p * absX);
+            const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-absX * absX);
+            return sign * y;
+        }
+
+        // 이론적 밑넓이 계산 및 표기
+        function calculateTheoreticalProbability() {
+            if (selectionStartPct === null || selectionEndPct === null) {
+                document.getElementById('lbl-range').innerText = "지정되지 않음";
+                document.getElementById('lbl-theoretical-prob').innerText = "0.00 %";
+                return 0;
+            }
+            
+            document.getElementById('lbl-range').innerText = `${selectionStartPct.toFixed(1)}% ~ ${selectionEndPct.toFixed(1)}%`;
+            
+            // CDF(끝점) - CDF(시작점) = 해당 구간의 정적분 밑넓이
+            const cdfStart = getNormalCDF(selectionStartPct, mu, sigma);
+            const cdfEnd = getNormalCDF(selectionEndPct, mu, sigma);
+            const area = (cdfEnd - cdfStart) * 100;
+            
+            document.getElementById('lbl-theoretical-prob').innerText = `${area.toFixed(2)} %`;
+            return area;
+        }
+
+        // Box-Muller 변환을 이용한 정규분포 난수 생성기
+        function generateNormalRandom(mean, stdDev) {
+            let u = 0, v = 0;
+            while(u === 0) u = Math.random(); 
+            while(v === 0) v = Math.random();
+            let num = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+            num = num * stdDev + mean;
+            return Math.max(0, Math.min(100, num)); // 0~100 사이로 제한
+        }
+
+        // 시뮬레이션 가동
+        function runSimulation() {
+            if (animationFrameId) return; // 이미 가동 중이면 중복 실행 방지
+            if (selectionStartPct === null || selectionEndPct === null) {
+                alert("하늘 화면을 마우스로 좌우 드래그하여 확률을 측정할 구간을 먼저 선택해 주세요!");
+                return;
+            }
+
+            const targetSimCount = parseInt(document.getElementById('input-count').value) || 500;
+            const lightningCanvas = document.getElementById('lightning-canvas');
+            const skyZone = document.getElementById('sky-zone');
+            const skyW = skyZone.clientWidth;
+            const skyH = skyZone.clientHeight;
+
+            let currentIteration = 0;
+
+            function simLoop() {
+                // 연산 속도 및 시각적 조화를 위해 한 프레임당 적절한 배치의 난수 생성
+                let batchSize = Math.ceil(targetSimCount / 60); 
+                
+                for (let b = 0; b < batchSize && currentIteration < targetSimCount; b++) {
+                    const randX = generateNormalRandom(mu, sigma);
+                    totalCount++;
+                    currentIteration++;
+                    
+                    // 히스토그램 버킷에 빈도 누적
+                    let bucketIdx = Math.floor((randX / 100) * totalIntervals);
+                    if (bucketIdx >= totalIntervals) bucketIdx = totalIntervals - 1;
+                    histogramBuckets[bucketIdx]++;
+                    
+                    // 지정된 구간(장막) 내부에 떨어졌는지 체크
+                    if (randX >= selectionStartPct && randX <= selectionEndPct) {
+                        hitCount++;
+                    }
+                    
+                    // 시각적 번개 이펙트 연출 (성능을 위해 샘플링 렌더링)
+                    if (targetSimCount < 200 || Math.random() < 0.15) {
+                        renderVisualLightning(randX, skyW, skyH, lightningCanvas);
+                    }
+                }
+
+                // UI 대시보드 및 히스토그램 차트 실시간 갱신
+                updateDashboard();
+                updateHistogramChart();
+
+                if (currentIteration < targetSimCount) {
+                    animationFrameId = requestAnimationFrame(simLoop);
+                } else {
+                    animationFrameId = null; // 종료
+                }
+            }
+            
+            simLoop();
+        }
+
+        // 실시간 대시보드 텍스트 정보 업데이트
+        function updateDashboard() {
+            document.getElementById('lbl-total-count').innerText = `${totalCount} 회`;
+            document.getElementById('lbl-hit-count').innerText = `${hitCount} 회`;
+            
+            const empiricalRatio = totalCount > 0 ? ((hitCount / totalCount) * 100) : 0;
+            document.getElementById('lbl-empirical-ratio').innerText = `${empiricalRatio.toFixed(2)} %`;
+        }
+
+        // 실시간 번개 줄기 SVG 그리기
+        function renderVisualLightning(pctX, w, h, canvas) {
+            const pixelX = (pctX / 100) * w;
+            let points = [`${pixelX},0`];
+            let curY = 0; let curX = pixelX;
+            const segments = 4;
+            const segmentH = (h - 30) / segments;
+            
+            for(let i = 1; i < segments; i++) {
+                curY += segmentH;
+                curX += (Math.random() - 0.5) * 20; // 지그재그 흔들림
+                points.push(`${curX},${curY}`);
+            }
+            points.push(`${pixelX},${h - 30}`);
+            
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            path.setAttribute("d", "M " + points.join(" L "));
+            path.setAttribute("stroke", "#ffeb3b");
+            path.setAttribute("stroke-width", "1.5");
+            path.setAttribute("fill", "none");
+            path.setAttribute("opacity", "0.6");
+            
+            canvas.appendChild(path);
+            setTimeout(() => path.remove(), 150); // 반짝인 후 제거
+        }
+
+        // 히스토그램 차트 업데이트
+        function updateHistogramChart() {
+            const barsGroup = document.getElementById('histogram-bars');
+            barsGroup.innerHTML = '';
+            
+            const chartW = document.getElementById('histogram-svg').clientWidth;
+            const maxBucketValue = Math.max(...histogramBuckets, 1);
+            const barW = chartW / totalIntervals;
+            
+            for(let i = 0; i < totalIntervals; i++) {
+                const count = histogramBuckets[i];
+                if (count === 0) continue;
+                
+                const barH = (count / maxBucketValue) * 150; // 최대 높이 150px 기준
+                const x = i * barW;
+                const y = 180 - barH;
+                
+                const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                rect.setAttribute("x", x);
+                rect.setAttribute("y", y);
+                rect.setAttribute("width", barW - 1);
+                rect.setAttribute("height", barH);
+                rect.setAttribute("fill", "#ff3366");
+                rect.setAttribute("opacity", "0.8");
+                
+                barsGroup.appendChild(rect);
+            }
+        }
+
+        // 초기화 버튼 리셋
+        function resetSimulation() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            
+            document.getElementById('lightning-canvas').innerHTML = '';
+            histogramBuckets.fill(0);
+            totalCount = 0;
+            hitCount = 0;
+            
+            updateDashboard();
+            updateHistogramChart();
+        }
+    </script>
+</body>
+</html>
