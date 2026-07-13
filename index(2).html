@@ -1,0 +1,46 @@
+<div class="control-box" style="margin-top: 20px;">
+    <h3 style="margin-top: 0; color: #ffaa00;">📜 정규분포 역사 탐험: 수학자 도감 게임</h3>
+    <p style="font-size: 0.9rem; color: #cbd5e1; margin-bottom: 15px;">
+        시뮬레이션을 실행하여 번개를 막아내고 <strong>지혜의 포인트(KP)</strong>를 모아 정규분포를 만든 수학자 카드를 수집하세요!
+    </p>
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; background: #0b0d16; padding: 10px 15px; border-radius: 8px; margin-bottom: 15px;">
+        <span>내 지혜의 포인트: <strong id="lbl-kp" style="color: #ffaa00;">0 KP</strong></span>
+        <span id="game-status-msg" style="font-size: 0.85rem; color: #94a3b8;">번개를 칠 때마다 포인트가 쌓입니다.</span>
+    </div>
+
+    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+        <div class="math-card locked" id="card-moivre" onclick="unlockMathCard('moivre')">
+            <div class="card-inner">
+                <div class="card-front">?</div>
+                <div class="card-back">
+                    <h4>드무아브르</h4>
+                    <p class="bio">이항분포가 커지면 종 모양 곡선이 된다는 것을 최초 발견!</p>
+                    <button class="quiz-btn" onclick="startMathQuiz('moivre', event)">퀴즈 풀기</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="math-card locked" id="card-gauss" onclick="unlockMathCard('gauss')">
+            <div class="card-inner">
+                <div class="card-front">?</div>
+                <div class="card-back">
+                    <h4>가우스</h4>
+                    <p class="bio">천체 관측 오차를 분석하며 '가우스 분포(정규분포)' 공식 확립!</p>
+                    <button class="quiz-btn" onclick="startMathQuiz('gauss', event)">퀴즈 풀기</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="math-card locked" id="card-quetelet" onclick="unlockMathCard('quetelet')">
+            <div class="card-inner">
+                <div class="card-front">?</div>
+                <div class="card-back">
+                    <h4>케틀레</h4>
+                    <p class="bio">자연 현상을 넘어 인간의 키, 범죄율 등 사회통계에 최초 적용!</p>
+                    <button class="quiz-btn" onclick="startMathQuiz('quetelet', event)">퀴즈 풀기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
